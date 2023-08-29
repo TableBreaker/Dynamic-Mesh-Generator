@@ -6,3 +6,4 @@ Temp/
 *.sln
 .idea/
 .DS_Store
+.vs/

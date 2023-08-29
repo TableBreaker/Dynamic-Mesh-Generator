@@ -142,8 +142,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c7b29fd13989aeb44b079027816de52e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_meshFilter: {fileID: 0}
-  m_mesh: {fileID: 0}
 --- !u!33 &659138391
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -215,7 +213,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &771526316
 Transform:
   m_ObjectHideFlags: 0
@@ -281,6 +279,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 61485baa5a72d394f90a96784a17e33d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  texture: {fileID: 2800000, guid: 56556f28fbe72cc40b3541c4a27cd316, type: 3}
 --- !u!1 &1292233595
 GameObject:
   m_ObjectHideFlags: 0
@@ -331,7 +330,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60
+  field of view: 30
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -444,7 +443,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1971450424
 Transform:
   m_ObjectHideFlags: 0
@@ -483,7 +482,7 @@ MeshRenderer:
   m_LightProbeUsage: 1
   m_ReflectionProbeUsage: 1
   m_Materials:
-  - {fileID: 2100000, guid: 4ba0aaa95c6689547982ef66bd964d9c, type: 2}
+  - {fileID: 2100000, guid: 11913a7b8272ee54384df7ea5491ae62, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

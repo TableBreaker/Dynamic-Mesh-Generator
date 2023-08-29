@@ -19,7 +19,7 @@ public class DynamicMeshGenerator : MonoBehaviour {
     /// <summary>
     /// Init the grid from a gray scale map.
     /// </summary>
-    public SquareMap(float[,] valueMap, float squareSize, float shrinkDelta) {
+    public SquareMap(float[,] valueMap, float squareSize) {
       squareMap = new List<KeyValuePair<Square, float>>();
 
       width = valueMap.GetLength(0);
@@ -33,16 +33,17 @@ public class DynamicMeshGenerator : MonoBehaviour {
       for (var x = 0; x < width; x++) {
         for (var y = 0; y < height; y++) {
           var pos = new Vector3(-mapWidth / 2 + x * squareSize + squareSize / 2, -mapHeight / 2 + y * squareSize + squareSize / 2, 0f);
-          nodes[x, y] = new ControlNode(pos, valueMap[x, y], true /* active */, squareSize, new Vector2Int(x, y));
+          var uv = new Vector2(x / (float)width, y / (float)height);
+          nodes[x, y] = new ControlNode(pos, uv, valueMap[x, y], true /* active */, squareSize, new Vector2Int(x, y));
         }
       }
 
-      for (var x = 0; x < nodes.GetLength(0); x++) {
-        for (var y = 0; y < nodes.GetLength(1); y++) {
-          var node = nodes[x, y];
-          _EnableNodeByConvolution(nodes, node, shrinkDelta);
-        }
-      }
+      //for (var x = 0; x < nodes.GetLength(0); x++) {
+      //  for (var y = 0; y < nodes.GetLength(1); y++) {
+      //    var node = nodes[x, y];
+      //    _CalculateConvolution(nodes, node);
+      //  }
+      //}
 
       for (var x = 0; x < width - 1; x++) {
         for (var y = 0; y < height - 1; y++) {
@@ -52,18 +53,13 @@ public class DynamicMeshGenerator : MonoBehaviour {
       }
     }
 
-    public bool Shrink(ControlNode[,] nodeMap, float delta) {
-      var result = false;
-      return result;
-    }
-
-    private bool _EnableNodeByConvolution(ControlNode[,] nodeMap, ControlNode controlNode, float deltaThreshold) {
+    private void _CalculateConvolution(ControlNode[,] nodeMap, ControlNode controlNode) {
       if (controlNode.coordinate.x == 0 || 
         controlNode.coordinate.x == width - 1 || 
         controlNode.coordinate.y == 0 || 
         controlNode.coordinate.y == height - 1) {
         controlNode.active = false;
-        return false;
+        return;
       }
 
       var deltaSum = 0f;
@@ -81,14 +77,7 @@ public class DynamicMeshGenerator : MonoBehaviour {
           deltaSum += Mathf.Abs(node.value - controlNode.value) * s_kernel[x, y];
         }
       }
-
-      var result = deltaSum > deltaThreshold;
-      if (controlNode.active != result) {
-        controlNode.active = result;
-        return true;
-      }
-
-      return false;
+      controlNode.delta = deltaSum;
     }
   }
 
@@ -131,9 +120,10 @@ public class DynamicMeshGenerator : MonoBehaviour {
   public class Node {
     public Vector3 position;
     public int vertexIndex = -1;
+    public Vector2 uv;
     public Square container;
 
-    public Node(Vector3 pos) {
+    public Node(Vector3 pos, Vector2 uv) {
       position = pos;
     }
   }
@@ -141,16 +131,17 @@ public class DynamicMeshGenerator : MonoBehaviour {
   public class ControlNode : Node {
     public bool active;
     public float value;
+    public float delta;
     public Vector2Int coordinate;
     public Node above, right;
 
-    public ControlNode(Vector3 pos, float value, bool active, float squareSize, Vector2Int coordinate) : base(pos) {
+    public ControlNode(Vector3 pos, Vector2 uv, float value, bool active, float squareSize, Vector2Int coordinate) : base(pos, uv) {
       this.active = active;
       this.value = value;
       this.coordinate = coordinate;
 
-      above = new Node(position + Vector3.up * squareSize / 2f);
-      right = new Node(position + Vector3.right * squareSize / 2f);
+      above = new Node(position + Vector3.up * squareSize / 2f, Vector2.zero);
+      right = new Node(position + Vector3.right * squareSize / 2f, Vector2.zero);
     }
 
     public void ConnectToSquare(Square square) {
@@ -158,38 +149,31 @@ public class DynamicMeshGenerator : MonoBehaviour {
       above.container = square;
       right.container = square;
     }
-
-    public Node DownToNode() {
-      return new Node(position);
-    }
   }
   #endregion
 
+  public Texture2D texture;
+
   public SquareMap grid;
   private List<Vector3> vertices;
+  private List<Vector2> uvs;
   private List<int> triangles;
 
   public void GenerateMesh(Texture2D texture, float squareSize) {
     // Step 1. Create a map of gray scale values.
-    //var valueMap = new float[texture.width, texture.height];
-    //for (var x = 0; x < texture.width; x++) {
-    //  for (var y = 0; y < texture.height; y++) {
-    //    valueMap[x, y] = texture.GetPixel(x, y).grayscale;
-    //  }
-    //}
-
-    var valueMap = new float[50, 50];
-    for (var x = 0; x < 50; x++) {
-      for (var y = 0; y < 50; y++) {
-        valueMap[x, y] = Random.value;
+    var valueMap = new float[texture.width, texture.height];
+    for (var x = 0; x < texture.width; x++) {
+      for (var y = 0; y < texture.height; y++) {
+        valueMap[x, y] = texture.GetPixel(x, y).grayscale;
       }
     }
 
     // Step 2. Create a shrinked square map.
-    grid = new SquareMap(valueMap, squareSize, 0.8f);
+    grid = new SquareMap(valueMap, squareSize);
 
     // Step 3. Create mesh.
     vertices = new List<Vector3>();
+    uvs = new List<Vector2>();
     triangles = new List<int>();
 
     foreach (var pair in grid.squareMap) {
@@ -199,6 +183,7 @@ public class DynamicMeshGenerator : MonoBehaviour {
     var mesh = new Mesh();
     mesh.name = "ProceduralMesh";
     mesh.SetVertices(vertices);
+    mesh.SetUVs(0, uvs);
     mesh.SetTriangles(triangles, 0);
     mesh.RecalculateNormals();
     mesh.RecalculateBounds();
@@ -290,6 +275,7 @@ public class DynamicMeshGenerator : MonoBehaviour {
       if (points[i].vertexIndex == -1) {
         points[i].vertexIndex = vertices.Count;
         vertices.Add(points[i].position);
+        uvs.Add(points[i].uv);
       }
     }
   }
@@ -301,33 +287,33 @@ public class DynamicMeshGenerator : MonoBehaviour {
   }
 
   private void OnDrawGizmos() {
-    if (grid != null) {
-      foreach (var pair in grid.squareMap) {
-        // Corner points
-        Gizmos.color = Color.white * pair.Key.topLeft.value;
-        Gizmos.DrawCube(pair.Key.topLeft.position, Vector3.one * .4f);
+    //if (grid != null) {
+    //  foreach (var pair in grid.squareMap) {
+    //    // Corner points
+    //    Gizmos.color = Color.white * pair.Key.topLeft.value;
+    //    Gizmos.DrawCube(pair.Key.topLeft.position, Vector3.one * .4f);
 
-        Gizmos.color = Color.white * pair.Key.topLeft.value;
-        Gizmos.DrawCube(pair.Key.topRight.position, Vector3.one * .4f);
+    //    Gizmos.color = Color.white * pair.Key.topLeft.value;
+    //    Gizmos.DrawCube(pair.Key.topRight.position, Vector3.one * .4f);
 
-        Gizmos.color = Color.white * pair.Key.topLeft.value;
-        Gizmos.DrawCube(pair.Key.bottomRight.position, Vector3.one * .4f);
+    //    Gizmos.color = Color.white * pair.Key.topLeft.value;
+    //    Gizmos.DrawCube(pair.Key.bottomRight.position, Vector3.one * .4f);
 
-        Gizmos.color = Color.white * pair.Key.topLeft.value;
-        Gizmos.DrawCube(pair.Key.bottomLeft.position, Vector3.one * .4f);
+    //    Gizmos.color = Color.white * pair.Key.topLeft.value;
+    //    Gizmos.DrawCube(pair.Key.bottomLeft.position, Vector3.one * .4f);
 
-        // Center points
-        Gizmos.color = Color.gray;
-        Gizmos.DrawCube(pair.Key.centerTop.position, Vector3.one * .15f);
-        Gizmos.DrawCube(pair.Key.centerRight.position, Vector3.one * .15f);
-        Gizmos.DrawCube(pair.Key.centerBottom.position, Vector3.one * .15f);
-        Gizmos.DrawCube(pair.Key.centerLeft.position, Vector3.one * .15f);
+    //    // Center points
+    //    Gizmos.color = Color.gray;
+    //    Gizmos.DrawCube(pair.Key.centerTop.position, Vector3.one * .15f);
+    //    Gizmos.DrawCube(pair.Key.centerRight.position, Vector3.one * .15f);
+    //    Gizmos.DrawCube(pair.Key.centerBottom.position, Vector3.one * .15f);
+    //    Gizmos.DrawCube(pair.Key.centerLeft.position, Vector3.one * .15f);
 
-      }
-    }
+    //  }
+    //}
   }
 
   private void Start() {
-    GenerateMesh(null, 1f);
+    GenerateMesh(texture, 1f);
   }
 }
